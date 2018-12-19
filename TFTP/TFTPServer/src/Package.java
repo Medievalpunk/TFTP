@@ -2,13 +2,12 @@
 
 import java.net.*;
 import java.io.*;
-import java.util.*;
 
-class TftpException extends Exception {
-	public TftpException() {
+class ExceptionTFTP extends Exception {
+	public ExceptionTFTP() {
 		super();
 	}
-	public TftpException(String s) {
+	public ExceptionTFTP(String s) {
 		super(s);
 	}
 }
@@ -16,11 +15,11 @@ class TftpException extends Exception {
 //GENERAL packet: define the packet structure, necessary members and methods// 
 //of TFTP packet. To be extended by other specific packet(read, write, etc) //
 //////////////////////////////////////////////////////////////////////////////
-public class TFTPpacket {
+public class Package {
 
   // TFTP constants
   public static int tftpPort = 69;
-  public static int maxTftpPakLen=516;
+  public static int packetLength =516;
   public static int maxTftpData=512;
 
   // Tftp opcodes
@@ -50,14 +49,14 @@ public class TFTPpacket {
   protected int port;
 
   // Constructor 
-  public TFTPpacket() {
-    message=new byte[maxTftpPakLen]; 
-    length=maxTftpPakLen; 
+  public Package() {
+    message=new byte[packetLength];
+    length= packetLength;
   } 
 
   // Methods to receive packet and convert it to yhe right type(data/ack/read/...)
-  public static TFTPpacket receive(DatagramSocket sock) throws IOException {
-    TFTPpacket in=new TFTPpacket(), retPak=new TFTPpacket();
+  public static Package receive(DatagramSocket sock) throws IOException {
+    Package in=new Package(), retPak=new Package();
     //receive data and put them into in.message
     DatagramPacket inPak = new DatagramPacket(in.message,in.length);
     sock.receive(inPak); 
@@ -65,19 +64,19 @@ public class TFTPpacket {
     //Check the opcode in message, then cast the message into the corresponding type
     switch (in.get(0)) {
       case tftpRRQ:
-    	  retPak=new TFTPread();
+    	  retPak=new RRQPackage();
         break;
       case tftpWRQ:
-    	  retPak=new TFTPwrite();
+    	  retPak=new WRQPackage();
         break;
       case tftpDATA:
-    	  retPak=new TFTPdata();
+    	  retPak=new DataPackage();
         break;
       case tftpACK:
-    	  retPak=new TFTPack();
+    	  retPak=new PackageTFTP();
         break;
       case tftpERROR:
-    	  retPak=new TFTPerror();
+    	  retPak=new ErrorPackage();
         break;
     }
     retPak.message=in.message;
@@ -134,12 +133,12 @@ public class TFTPpacket {
 //DATA packet: put the right code in the message; read// 
 //file for sending; write file after receiving        //
 ////////////////////////////////////////////////////////
-final class TFTPdata extends TFTPpacket {
+final class DataPackage extends Package {
 
 	// Constructors
-	protected TFTPdata() {}
-	public TFTPdata(int blockNumber, FileInputStream in) throws IOException {
-		this.message = new byte[maxTftpPakLen];
+	protected DataPackage() {}
+	public DataPackage(int blockNumber, FileInputStream in) throws IOException {
+		this.message = new byte[packetLength];
 		// manipulate message
 		this.put(opOffset, tftpDATA);
 		this.put(blkOffset, (short) blockNumber);
@@ -171,13 +170,13 @@ final class TFTPdata extends TFTPpacket {
 //ERROR packet: put the right codes and error messages // 
 //in the 'message'                                     //
 /////////////////////////////////////////////////////////
-class TFTPerror extends TFTPpacket {
+class ErrorPackage extends Package {
 
 	// Constructors
-	protected TFTPerror() {
+	protected ErrorPackage() {
 	}
 	//Generate error packet
-	public TFTPerror(int number, String message) {
+	public ErrorPackage(int number, String message) {
 		length = 4 + message.length() + 1;
 		this.message = new byte[length];
 		put(opOffset, tftpERROR);
@@ -198,13 +197,13 @@ class TFTPerror extends TFTPpacket {
 //ACK packet: put the right opcode and block number in // 
 //the 'message'                                        //
 /////////////////////////////////////////////////////////
-final class TFTPack extends TFTPpacket {
+final class PackageTFTP extends Package {
 
 	// Constructors
-	protected TFTPack() {
+	protected PackageTFTP() {
 	}
 	//Generate ack packet
-	public TFTPack(int blockNumber) {
+	public PackageTFTP(int blockNumber) {
 		length = 4;
 		this.message = new byte[length];
 		put(opOffset, tftpACK);
@@ -222,14 +221,14 @@ final class TFTPack extends TFTPpacket {
 //READ packet: put the right opcode and filename, mode // 
 //in the 'message'                                     //
 /////////////////////////////////////////////////////////
-final class TFTPread extends TFTPpacket {
+final class RRQPackage extends Package {
 
 
 // Constructors
-protected TFTPread() {}
+protected RRQPackage() {}
 
 //specify the filename and transfer mode 
-public TFTPread(String filename, String dataMode) {
+public RRQPackage(String filename, String dataMode) {
 	length=2+filename.length()+1+dataMode.length()+1;
 	  message = new byte[length];
 
@@ -254,13 +253,13 @@ public String requestType() {
 //WRITE packet: put the right opcode and filename, mode// 
 //in the 'message'                                     //
 /////////////////////////////////////////////////////////
-final class TFTPwrite extends TFTPpacket {
+final class WRQPackage extends Package {
 
 //Constructors
 
-protected TFTPwrite() {}
+protected WRQPackage() {}
 
-public TFTPwrite(String filename, String dataMode) {
+public WRQPackage(String filename, String dataMode) {
 	length=2+filename.length()+1+dataMode.length()+1;
 	message = new byte[length];
 
